@@ -1,7 +1,6 @@
 {
   "dependencies": {
     "express": "^4.17.1",
-    "luxon": "^2.1.1",
     "wake_on_lan": "^1.0.0"
   }
 }
