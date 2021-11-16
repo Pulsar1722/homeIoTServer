@@ -11,7 +11,6 @@ const APP_VERSION = {
 //各種パラメータ
 const CONFIG_JSON_FILENAME = "./config.json"; //設定ファイルの(server.jsから見た)相対パス
 let confObj = null; //設定ファイルから読みだした値のオブジェクト
-const REQ_PORT_NUM = 60001; //本アプリが外部からのリクエストを受け付けるポート番号
 
 //使用モジュール
 const wol = require("wake_on_lan");
@@ -28,7 +27,8 @@ if (require.main === module) {
  */
 function main() {
     printLog(`AppVersion: ${APP_VERSION.major}.${APP_VERSION.minor}.${APP_VERSION.revision}`);
-    app.listen(REQ_PORT_NUM) //外部からのリクエストを受け付けるポート番号を指定
+    confObj = readJsonConfigFile(CONFIG_JSON_FILENAME);
+    app.listen(confObj.src_server_info.req_port) //外部からのリクエストを受け付けるポート番号を指定
 }
 
 /**
@@ -38,7 +38,6 @@ function main() {
 app.get("/wakeOnLan", function (req, res) {
     let msg;
     confObj = readJsonConfigFile(CONFIG_JSON_FILENAME);
-
     wol.wake(confObj.dest_pc_info.mac_addr, { address: confObj.dest_pc_info.ipaddr, port: confObj.dest_pc_info.port }, function (error) {
         if (error) {
             msg = `Send magic packet FAILED.(${confObj.dest_pc_info.ipaddr}, ${confObj.dest_pc_info.mac_addr})`;
@@ -98,6 +97,15 @@ function readJsonConfigFile(jsonFilePath) {
             }
             if (jsonObj.dest_pc_info.port === undefined) {
                 undefinedParams.push("dest_pc_info.port");
+            }
+        }
+
+        if (jsonObj.src_server_info === undefined) {
+            undefinedParams.push("src_server_info");
+        } else {
+            //サブパラメータについても確認
+            if (jsonObj.src_server_info.req_port === undefined) {
+                undefinedParams.push("src_server_info.req_port");
             }
         }
 
