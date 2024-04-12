@@ -1,2 +1,2 @@
-# wol
-Wake On Lan PC
+# homeIotServer
+Home IoT Server(for IFTTT)
