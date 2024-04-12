@@ -5,7 +5,7 @@ const APP_NAME = `homeIotServer`; //本アプリ名
 const APP_VERSION = {
     major: `2`,
     minor: `0`,
-    revision: `0`,
+    revision: `1`,
 }
 
 //各種パラメータ
@@ -32,7 +32,7 @@ class HomeMember {
         this.isInHome = false;
     }
 }
-let homeMembers = [new HomeMember("Haruki", "はるき", false, leftWorkplaceHaruki), new HomeMember("Kako", "かこ", false, null)];
+let homeMembers = [new HomeMember("Haruki", "はるき", true, leftWorkplaceHaruki), new HomeMember("Kako", "かこ", true, null)];
 
 
 //使用モジュール
@@ -76,7 +76,7 @@ app.get("/arrivedHome/:name", function (req, res) {
     }
     if (inHomeCounter === 1) {
         // 帰宅した最初の一人の場合、IFTTTにリクエスト送信
-        sendReqToIfttt("one_member_in_home", null);
+        sendReqToIfttt("one_member_into_home", null);
     }
 
 });
