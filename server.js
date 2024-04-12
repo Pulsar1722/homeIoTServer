@@ -79,6 +79,7 @@ app.get("/arrivedHome/:name", function (req, res) {
         sendReqToIfttt("one_member_into_home", null);
     }
 
+    res.send(homeMembers);
 });
 
 // 家から離れたとき
@@ -102,6 +103,8 @@ app.get("/leftHome/:name", function (req, res) {
         // 全員家から離れたら、IFTTTにリクエスト送信
         sendReqToIfttt("all_member_out_of_home", null);
     }
+
+    res.send(homeMembers);
 });
 
 // 職場から離れたとき
@@ -114,6 +117,8 @@ app.get("/leftWorkplace/:name", function (req, res) {
             break;
         }
     }
+
+    res.send(homeMembers);
 });
 
 //その他関数
