@@ -182,7 +182,6 @@ function leftHomeHaruki() {
     try {
         const switchbotInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).switchbot_info;
         executeSceneByName("はるき部屋シャットダウン", switchbotInfo);
-        throw new Error("テスト");
     } catch (error) {
         printErrLog(error);
         sendMailWhenErrorThrow(error);
