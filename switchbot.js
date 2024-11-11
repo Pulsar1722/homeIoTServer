@@ -1,3 +1,5 @@
+'use strict';
+
 // 使用モジュール
 const axios = require('axios');
 const crypto = require('crypto');
