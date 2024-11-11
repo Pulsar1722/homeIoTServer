@@ -33,7 +33,7 @@ class HomeMember {
         this.isInHome = false;
     }
 }
-let homeMembers = [new HomeMember("Haruki", "はるき", true, null, leftHomeHaruki), new HomeMember("Kako", "かこ", false, null, null)];
+let homeMembers = [new HomeMember("Haruki", "はるき", true, null, leftHomeHaruki), new HomeMember("Kako", "かこ", true, null, null)];
 
 //このファイルがメインモジュールかの確認に用いるらしい
 if (require.main === module) {
