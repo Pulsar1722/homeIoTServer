@@ -106,6 +106,12 @@ app.get("/leftHome/:name", function (req, res) {
     res.send(homeMembers);
 });
 
+// 現在の家の状況
+app.get("/homeStatus", function (req, res) {
+    printHomeStatus();
+    res.send(homeMembers);
+});
+
 //その他関数
 
 /**
