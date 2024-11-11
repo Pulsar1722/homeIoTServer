@@ -1,8 +1,19 @@
 {
     "src_server_info": {
-        "recv_port": 12345
+        "req_port": 12345
     },
-    "ifttt_webhook_info": {
-        "key": "hogehoge_fugafuga"
+    "switchbot_info": {
+        "token": "hoge_token",
+        "secret": "fuga_secret",
+        "nonce": "hogefuga_nonce",
+        "cleaningIntevalMs": 86400000,
+        "RoboCleanerName": "ロボット掃除機K10+"
+    },
+    "mail_info": {
+        "dstAddrs": [
+            "hoge.dst@mail.com"
+        ],
+        "srcAddr": "hoge.src@gmail.com",
+        "srcPass": "hogePassword"
     }
 }

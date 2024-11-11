@@ -1,44 +1,39 @@
 'use strict';
 
-//共通パラメータ
-const APP_NAME = `homeIotServer`; //本アプリ名
-const APP_VERSION = {
-    major: `2`,
-    minor: `0`,
-    revision: `1`,
-}
-
-//各種パラメータ
-const CONFIG_JSON_FILENAME = "./config.json"; //設定ファイルの(server.jsから見た)相対パス
-let confObj = null; //設定ファイルから読みだした値のオブジェクト
+//使用モジュール
+const express = require("express");
+const app = express();
+const { printLog, printErrLog, readJsonConfigFile, sendMail, APP_NAME, APP_VERSION, CONFIG_JSON_FILENAME } = require('./common.js');
+const { executeSceneByName, checkDeviceStatusIfOnlineByName } = require('./switchbot.js');
 
 class HomeMember {
-    constructor(name, japaneseName, isInHome, leftWorkplaceFunc) {
+    constructor(name, japaneseName, isInHome, arrivedHomeFunc, leftHomeFunc) {
         this.name = name;
         this.japaneseName = japaneseName;
         this.isInHome = isInHome;
-        this.leftWorkplaceFunc = leftWorkplaceFunc;
+        this.arrivedHomeFunc = arrivedHomeFunc;
+        this.leftHomeFunc = leftHomeFunc;
     }
 
     // 帰宅時処理
-    comeHome() {
+    arrivedHome() {
+        if (this.arrivedHomeFunc != null) {
+            this.arrivedHomeFunc();
+        }
         printLog(`${this.name} came home.`);
         this.isInHome = true;
     }
 
     // 外出時処理
-    leaveHome() {
+    leftHome() {
+        if (this.leftHomeFunc != null) {
+            this.leftHomeFunc();
+        }
         printLog(`${this.name} left home.`);
         this.isInHome = false;
     }
 }
-let homeMembers = [new HomeMember("Haruki", "はるき", true, leftWorkplaceHaruki), new HomeMember("Kako", "かこ", true, null)];
-
-
-//使用モジュール
-const express = require("express");
-const app = express();
-const axios = require("axios");
+let homeMembers = [new HomeMember("Haruki", "はるき", true, null, leftHomeHaruki), new HomeMember("Kako", "かこ", false, null, null)];
 
 //このファイルがメインモジュールかの確認に用いるらしい
 if (require.main === module) {
@@ -49,9 +44,13 @@ if (require.main === module) {
  * Main関数
  */
 function main() {
-    confObj = readJsonConfigFile(CONFIG_JSON_FILENAME);
-    app.listen(confObj.src_server_info.req_port) //外部からのリクエストを受け付けるポート番号を指定
-    printLog(`AppVersion: ${APP_VERSION.major}.${APP_VERSION.minor}.${APP_VERSION.revision}`);
+    try {
+        const confObj = readJsonConfigFile(CONFIG_JSON_FILENAME);
+        app.listen(confObj.src_server_info.req_port) //外部からのリクエストを受け付けるポート番号を指定
+        printLog(`AppVersion: ${APP_VERSION.major}.${APP_VERSION.minor}.${APP_VERSION.revision}`);
+    } catch (error) {
+        printErrLog(error);
+    }
 }
 
 /**
@@ -61,7 +60,7 @@ function main() {
 app.get("/arrivedHome/:name", function (req, res) {
     for (let member of homeMembers) {
         if (req.params.name === member.name) {
-            member.comeHome();
+            member.arrivedHome();
             break;
         }
     }
@@ -75,8 +74,8 @@ app.get("/arrivedHome/:name", function (req, res) {
         }
     }
     if (inHomeCounter === 1) {
-        // 帰宅した最初の一人の場合、IFTTTにリクエスト送信
-        sendReqToIfttt("one_member_into_home", null);
+        // 帰宅した最初の一人の場合の処理実行
+        oneMemberArrivedHome();
     }
 
     res.send(homeMembers);
@@ -86,7 +85,7 @@ app.get("/arrivedHome/:name", function (req, res) {
 app.get("/leftHome/:name", function (req, res) {
     for (let member of homeMembers) {
         if (req.params.name === member.name) {
-            member.leaveHome();
+            member.leftHome();
             break;
         }
     }
@@ -100,22 +99,8 @@ app.get("/leftHome/:name", function (req, res) {
         }
     }
     if (inHomeCounter === 0) {
-        // 全員家から離れたら、IFTTTにリクエスト送信
-        sendReqToIfttt("all_member_out_of_home", null);
-    }
-
-    res.send(homeMembers);
-});
-
-// 職場から離れたとき
-app.get("/leftWorkplace/:name", function (req, res) {
-    for (let member of homeMembers) {
-        if (req.params.name === member.name) {
-            if (member.leftWorkplaceFunc != null) {
-                member.leftWorkplaceFunc();
-            }
-            break;
-        }
+        // 全員家から離れた場合の処理実行
+        allMembersLeftHome();
     }
 
     res.send(homeMembers);
@@ -124,27 +109,7 @@ app.get("/leftWorkplace/:name", function (req, res) {
 //その他関数
 
 /**
- * Harukiの職場から離れたときの処理
- * @param none
- * @return none
- */
-function leftWorkplaceHaruki() {
-    // 現在の日本時間を取得
-    const currentJapanTime = new Date(new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }));
-
-    // 17:30以降に職場を離れた場合、帰路についたと判断する
-    if (currentJapanTime.getHours() >= 18 ||
-        currentJapanTime.getHours() >= 17 && currentJapanTime.getMinutes() >= 30) {
-        // IFTTTにてLINEにメッセージ送信
-        const postData = {
-            value1: "はるきが帰宅します",
-        };
-        sendReqToIfttt("sendline", postData);
-    }
-}
-
-/**
- * ホームメンバの在宅状態をコンソール二出力(在宅:true,不在;false)
+ * ホームメンバの在宅状態をコンソールに出力(在宅:true,不在;false)
  * @param none
  * @return none
  */
@@ -156,84 +121,102 @@ function printHomeStatus() {
     printLog(msg);
 }
 
+// 前回の清掃開始時刻を記録する変数
+let lastCleaningTime = null;
 /**
- * IFTTT宛にWebhookリクエストを送信する
- * @param {string} event - Webhookイベント
- * @param {string} postData - ポストデータ
+ * 清掃開始処理
+ * 前回の清掃から規定時間が経過しているときのみ清掃開始。経過していなければ清掃開始はしない
+ * @param なし
  * @return none
  */
-function sendReqToIfttt(event, postData) {
-    confObj = readJsonConfigFile(CONFIG_JSON_FILENAME);
-    const url = `https://maker.ifttt.com/trigger/${event}/with/key/${confObj.ifttt_webhook_info.key}`;
-    axios.post(url, postData)
-        .then(response => {
-            // とりあえずログ出力は不要
-            // printLog(response);
-        })
-        .catch(function (error) {
-            printErrLog(error.toJSON());
-        });
-}
-
-/**
- * 本アプリにおける通常ログを出力する関数
- * @param {string} logstr -出力するログ文字列
- * @return none
- */
-function printLog(logstr) {
-    console.log(`<${APP_NAME}> ${logstr}`);
-}
-
-/**
- * 本アプリにおける異常ログを出力する関数
- * @param {string} logstr -出力するログ文字列
- * @return none
- */
-function printErrLog(logstr) {
-    console.error(`<${APP_NAME}> ${logstr}`);
-}
-
-/**
- * 設定ファイル(JSON形式)を読み出し、各種設定値を取得する。設定値の妥当性確認も行う
- * @param {string} jsonFilename -JSON形式の設定ファイルパス
- * @return 正常に設定ファイルを読み出せた場合はJSONオブジェクト。そうでない場合はnull
- */
-function readJsonConfigFile(jsonFilePath) {
-    let jsonObj = null;
-    let undefinedParams = [];
-
-    try {
-        //ファイルパスが異常なら、ここでエラーをthrowする
-        jsonObj = require(jsonFilePath);
-        delete require.cache[require.resolve(jsonFilePath)]; //ここでrequireのキャッシュを削除し、次回以降も再度ファイルを読み出すようにする
-
-        /**以下、設定値の確認 */
-        if (jsonObj.ifttt_webhook_info === undefined) {
-            undefinedParams.push("ifttt_webhook_info");
-        } else {
-            //サブパラメータについても確認
-            if (jsonObj.ifttt_webhook_info.key === undefined) {
-                undefinedParams.push("ifttt_webhook_info.key");
-            }
-        }
-
-        if (jsonObj.src_server_info === undefined) {
-            undefinedParams.push("src_server_info");
-        } else {
-            //サブパラメータについても確認
-            if (jsonObj.src_server_info.req_port === undefined) {
-                undefinedParams.push("src_server_info.req_port");
-            }
-        }
-
-        // 1個以上のパラメータが設定されていなければエラー扱い
-        if (undefinedParams.length !== 0) {
-            throw `${undefinedParams} is undefined.`;
-        }
-    } catch (error) {
-        printErrLog(error);
-        jsonObj = null;
+async function startCleaning() {
+    const switchbotInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).switchbot_info;
+    const now = Date.now();
+    if (lastCleaningTime && now - lastCleaningTime < switchbotInfo.cleaningIntevalMs) {
+        // 前回の清掃から規定時間が経過していない場合、清掃開始をスキップ
+        return;
     }
 
-    return jsonObj;
+    // ロボット掃除機は何故かオフラインになりやすいので、デバイスステータスの確認を行う
+    try {
+        let onlineStatus = await checkDeviceStatusIfOnlineByName("ロボット掃除機K10+", switchbotInfo);
+        if (!onlineStatus) {
+            // オフラインなら例外送出
+            throw new Error("ロボット掃除機K10+ OFFLINE");
+        }
+    } catch (error) {
+        // ステータスの中身を問わず、オフラインであれば例外が送出される
+        printErrLog(error);
+        sendMailWhenErrorThrow(error);
+        return;
+    }
+
+    lastCleaningTime = now;
+    executeSceneByName("清掃開始", switchbotInfo);
+}
+
+/**
+ * 例外発生時のメール送信処理
+ * @param {error} error内容
+ * @return none
+ */
+function sendMailWhenErrorThrow(error) {
+    const mail_info = readJsonConfigFile(CONFIG_JSON_FILENAME).mail_info;
+    const title = `<${APP_NAME}> 例外発生！！！`;
+    const body =
+        error + `\n` +
+        `\n` +
+        `AppVersion: ${APP_VERSION.major}.${APP_VERSION.minor}.${APP_VERSION.revision} `;
+
+    for (let dstAddr of mail_info.dstAddrs) {
+        sendMail(dstAddr, title, body);
+    }
+}
+
+/**
+ * Harukiの外出時の処理
+ * @param none
+ * @return none
+ */
+function leftHomeHaruki() {
+    try {
+        const switchbotInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).switchbot_info;
+        executeSceneByName("はるき部屋シャットダウン", switchbotInfo);
+        throw new Error("テスト");
+    } catch (error) {
+        printErrLog(error);
+        sendMailWhenErrorThrow(error);
+    }
+}
+
+/**
+ * 全員家から離れた時の処理
+ * @param なし
+ * @return none
+ */
+function allMembersLeftHome() {
+    try {
+        const switchbotInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).switchbot_info;
+        executeSceneByName("家電シャットダウン", switchbotInfo);
+        startCleaning();
+    } catch (error) {
+        printErrLog(error);
+        sendMailWhenErrorThrow(error);
+    }
+}
+
+/**
+ * 最初の一人が家に帰宅したときの処理
+ * @param なし
+ * @return none
+ */
+function oneMemberArrivedHome() {
+    try {
+        const switchbotInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).switchbot_info;
+        executeSceneByName("リビング家電アクティブ", switchbotInfo);
+        executeSceneByName("清掃終了", switchbotInfo);
+    } catch (error) {
+        printErrLog(error);
+        sendMailWhenErrorThrow(error);
+    }
 }
