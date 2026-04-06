@@ -47,10 +47,16 @@ nano config.json
 サーバーを閉じても動き続けるように設定します。
 ```Bash
 sudo npm install -g pm2
-pm2 start server.js --name "home-iot"
+pm2 start ecosystem.config.js
 pm2 save
 pm2 startup
 # 表示されたコマンドをコピーして実行する（自動起動設定、sudoから始まる）
+```
+
+※動作ログの1日ごとにログを分割・圧縮する方法(任意)
+```Bash
+# インストールするだけで自動設定される
+pm2 install pm2-logrotate
 ```
 5. GCP ファイアウォールの設定
 
