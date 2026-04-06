@@ -5,9 +5,7 @@
     "switchbot_info": {
         "token": "hoge_token",
         "secret": "fuga_secret",
-        "nonce": "hogefuga_nonce",
-        "cleaningIntevalMs": 86400000,
-        "RoboCleanerName": "ロボット掃除機K10+"
+        "cleaningIntevalMs": 86400000
     },
     "mail_info": {
         "dstAddrs": [
@@ -15,5 +13,11 @@
         ],
         "srcAddr": "hoge.src@gmail.com",
         "srcPass": "hogePassword"
+    },
+    "weather_info": {
+        "latitude": 12.3456,
+        "longitude": 78.9012,
+        "openweather_api_key": "apikey1234567890",
+        "cloudLevelThreshold": 90
     }
 }

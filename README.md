@@ -1,5 +1,5 @@
 # homeIotServer
-Home IoT Server(for IFTTT)
+Home IoT Server
 
 ## 動作確認環境
 Nodejsバージョン: v14.21.1

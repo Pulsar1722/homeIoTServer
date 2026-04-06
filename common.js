@@ -3,12 +3,13 @@
 'use strict';
 
 const fs = require('fs');
+const nodemailer = require('nodemailer');
 
 //共通パラメータ
 const APP_VERSION = {
-    major: `3`,
+    major: `4`,
     minor: `0`,
-    revision: `2`,
+    revision: `0`,
 }
 const APP_NAME = `homeIotServer`; //本アプリ名
 const CONFIG_JSON_FILENAME = "./config.json"; //設定ファイルの相対パス
@@ -47,8 +48,9 @@ function readJsonConfigFile(jsonFilePath) {
     // 各オブジェクトの必須プロパティを定義
     const requiredConfig = {
         src_server_info: ['req_port'],
-        switchbot_info: ['token', 'secret', 'nonce', 'cleaningIntevalMs'],
-        mail_info: ['dstAddrs', 'srcAddr', 'srcPass']
+        switchbot_info: ['token', 'secret', 'cleaningIntevalMs'],
+        mail_info: ['dstAddrs', 'srcAddr', 'srcPass'],
+        weather_info: ['latitude', 'longitude', 'openweather_api_key', 'cloudLevelThreshold'],
     };
 
     const missingProperties = [];
@@ -76,25 +78,6 @@ function readJsonConfigFile(jsonFilePath) {
 }
 
 /**
- * @classdesc Webページ応答異常時の通知メールを作成する関数
- * @param {title} メールタイトル
- * @param {body} メールの文面
- * @return {mailContent} 通知メール送信用gmail-sendオブジェクト(to未指定)
- */
-function generateMailContents(title, body) {
-    const mail_info = readJsonConfigFile(CONFIG_JSON_FILENAME).mail_info;
-    const mailContent = require('gmail-send')({
-        user: mail_info.srcAddr,
-        pass: mail_info.srcPass,
-        //to: //後で指定する
-        subject: title,
-        text: body,
-    });
-
-    return mailContent;
-}
-
-/**
  * @classdesc メールを送信する関数
  * @param {string} destAddr 宛先メールアドレス
  * @param {title} メールタイトル
@@ -102,23 +85,36 @@ function generateMailContents(title, body) {
  * @return {boolean} 送信成功ならtrue、送信失敗ならfalse
  */
 async function sendMail(destAddr, title, body) {
-    let isOK = false;
-    const mailContent = generateMailContents(title, body);
+    const mail_info = readJsonConfigFile(CONFIG_JSON_FILENAME).mail_info;
+    
+    // 1. 送信機（Transporter）の作成
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: mail_info.srcAddr, // 送信元Gmailアドレス
+            pass: mail_info.srcPass  // Googleアカウントの「アプリパスワード」
+        }
+    });
+
+    // 2. メール内容の設定
+    const mailOptions = {
+        from: mail_info.srcAddr,
+        to: destAddr,
+        subject: title,
+        text: body
+    };
 
     try {
-        const { result, fullresult } = await mailContent(
-            {
-                to: destAddr, //ここでtoが指定されるのをトリガーに、メールを送信する。(なんでこんなAPI仕様なんだよ！)
-            }
-        )
-        printLog(`gmail - send result: ${result} `);
-        isOK = true;
+        // 3. 送信実行
+        const info = await transporter.sendMail(mailOptions);
+        printLog(`Email sent: ${info.response}`);
+        return true;
     } catch (error) {
-        printErrLog(`gmail - send ERROR: ${error} `);
-        isOK = false;
+        printErrLog(`Email send ERROR: ${error}`);
+        return false;
     }
-
-    return isOK;
 }
 
-module.exports = { printLog, printErrLog, readJsonConfigFile, sendMail, APP_NAME, APP_VERSION, CONFIG_JSON_FILENAME };
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+module.exports = { printLog, printErrLog, readJsonConfigFile, sendMail, APP_NAME, APP_VERSION, CONFIG_JSON_FILENAME, sleep };

@@ -1,8 +1,27 @@
 {
+  "name": "homeiotserver",
+  "version": "1.0.0",
+  "description": "Home IoT Server",
+  "main": "common.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pulsar1722/homeIoTServer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Pulsar1722/homeIoTServer/issues"
+  },
+  "homepage": "https://github.com/Pulsar1722/homeIoTServer#readme",
   "dependencies": {
-    "axios": "^1.7.7",
-    "express": "^4.17.1",
-    "gmail-send": "^1.8.14",
-    "wake_on_lan": "^1.0.0"
+    "axios": "^1.14.0",
+    "express": "^5.2.1",
+    "nodemailer": "^8.0.4"
   }
 }
