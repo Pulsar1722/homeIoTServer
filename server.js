@@ -310,7 +310,7 @@ async function oneMemberArrivedHome() {
         // executeSceneByName("リビング家電アクティブ", switchbotInfo);
         executeCommand(switchbotInfo, ROBOT_CLEANER_DEVICE_NAME, CMD_ROBOT_CLEANER_STOP);
         // executeCommand(switchbotInfo, LIVING_AIR_CONDITIONER_DEVICE_NAME, CMD_REMOTE_SETALL, "25,2,1,on");
-        if( checkDarkness() ) {
+        if( checkDarkness() === true ) {
             // 暗いときだけ照明をつける
             executeCommand(switchbotInfo, LIVING_LIGHT_DEVICE_NAME, CMD_LIGHT_ON);
         }

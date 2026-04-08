@@ -9,7 +9,7 @@ const nodemailer = require('nodemailer');
 const APP_VERSION = {
     major: `4`,
     minor: `0`,
-    revision: `0`,
+    revision: `1`,
 }
 const APP_NAME = `homeIotServer`; //本アプリ名
 const CONFIG_JSON_FILENAME = "./config.json"; //設定ファイルの相対パス
