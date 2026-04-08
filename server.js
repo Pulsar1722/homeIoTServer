@@ -264,7 +264,7 @@ function allMembersLeftHome() {
 /**
  * 暗いかどうかを判定する (日没 or 雲量)
  */
-async function checkDarkness(latitude, longitude) {
+async function checkDarkness() {
     try {
         const weatherInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).weather_info;
         const url = `https://api.openweathermap.org/data/2.5/weather?lat=${weatherInfo.latitude}&lon=${weatherInfo.longitude}&appid=${weatherInfo.openweather_api_key}&units=metric`;
