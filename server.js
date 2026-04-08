@@ -152,6 +152,12 @@ app.get("/cloud", function (req, res) {
     });
 });
 
+// 雲量
+app.get("/test", function (req, res) {
+    oneMemberArrivedHome();
+        res.send();
+});
+
 async function getCloudiness() {
     const weatherInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).weather_info;
     const url = `https://api.openweathermap.org/data/2.5/weather?lat=${weatherInfo.latitude}&lon=${weatherInfo.longitude}&appid=${weatherInfo.openweather_api_key}&units=metric`;
@@ -310,7 +316,7 @@ async function oneMemberArrivedHome() {
         // executeSceneByName("リビング家電アクティブ", switchbotInfo);
         executeCommand(switchbotInfo, ROBOT_CLEANER_DEVICE_NAME, CMD_ROBOT_CLEANER_STOP);
         // executeCommand(switchbotInfo, LIVING_AIR_CONDITIONER_DEVICE_NAME, CMD_REMOTE_SETALL, "25,2,1,on");
-        if( checkDarkness() === true ) {
+        if( await checkDarkness() ) {
             // 暗いときだけ照明をつける
             executeCommand(switchbotInfo, LIVING_LIGHT_DEVICE_NAME, CMD_LIGHT_ON);
         }
