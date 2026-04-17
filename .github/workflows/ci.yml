@@ -1,0 +1,31 @@
+name: TypeScript Check
+
+# 実行タイミングの設定
+on:
+  push:
+    branches: [ main, dev ] # mainかdevにpushされたとき
+  pull_request:
+    branches: [ main, dev ] # mainかdevにプルリクが送られたとき
+
+jobs:
+  type-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. リポジトリのコードをチェックアウト
+      - uses: actions/checkout@v4
+
+      # 2. Node.js環境のセットアップ
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # 使用しているNodeのバージョンに合わせてください
+          cache: 'npm'       # npmのキャッシュを有効にして高速化
+
+      # 3. 依存パッケージのインストール
+      - name: Install dependencies
+        run: npm install
+
+      # 4. 型チェック（ビルド）の実行
+      - name: Run Type Check
+        run: npm run build

@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",             // 生成されるJSのバージョン
+    "module": "NodeNext",           // Node.jsのモジュールシステムに合わせる
+    "moduleResolution": "NodeNext",
+    "outDir": "./dist",             // コンパイル後のJSの出力先
+    "rootDir": "./src",             // ソースコードの場所（既存コードをsrcに移動する場合）
+    "esModuleInterop": true,        // CommonJSとES Modulesの互換性を保つ
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowJs": true,                // JSファイルの混在を許可（移行期には必須）
+    "checkJs": false,                // JSファイルの型チェックは最初はオフでOK
+    "resolveJsonModule": true,      // JSONファイルをモジュールとしてインポート可能にする
+    "esModuleInterop": true,        // CommonJSとES Modulesの互換性を保つ
+
+    "strict": true,            /* これをtrueにすると以下の項目がすべて有効になります */
+    "noImplicitAny": true,     /* 型が推論できない場合にanyになるのを防ぐ */
+    "strictNullChecks": true,  /* null や undefined の扱いを厳密にする（超重要） */
+    "noUnusedLocals": true,    /* 使っていない変数をエラーにする */
+    "noUnusedParameters": true /* 使っていない引数をエラーにする */
+  },
+  "include": ["src/**/*"],          // 対象ファイル
+  "exclude": ["node_modules"]
+}

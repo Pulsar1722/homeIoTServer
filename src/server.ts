@@ -1,11 +1,10 @@
-'use strict';
-
 //使用モジュール
-const express = require("express");
-const axios = require('axios');
+import express from "express";
+import axios from 'axios';
 const app = express();
-const { printLog, printErrLog, readJsonConfigFile, sendMail, APP_NAME, APP_VERSION, CONFIG_JSON_FILENAME, sleep } = require('./common.js');
-const { executeSceneByName, executeCommand, checkDeviceStatusIfOnlineByName } = require('./switchbot.js');
+import packageInfo from '../package.json';
+import { printLog, printErrLog, readJsonConfigFile, sendMail, CONFIG_JSON_FILENAME, sleep, SwitchBotInfo } from './common';
+import { executeCommand, } from './switchbot';
 
 // デバイス名
 const ROBOT_CLEANER_DEVICE_NAME = "ロボット掃除機K10+";
@@ -22,16 +21,24 @@ const CMD_ROBOT_CLEANER_STOP = "dock";
 const CMD_LIGHT_ON = "turnOn";
 const CMD_LIGHT_OFF= "turnOff";
 
-const CMD_REMOTE_SETALL= "setAll";
+// const CMD_REMOTE_SETALL= "setAll";
 
 const CMD_TV_DTTV= "地上D_API用";
 
 // コマンドタイプ
 const CMD_TYPE_CUSTOMIZE = "customize";
 
+// 型名
+type EventFunc = ( ) => void;
+type UnixTimestamp = number;
 
 class HomeMember {
-    constructor(name, japaneseName, isInHome, arrivedHomeFunc, leftHomeFunc) {
+    arrivedHomeFunc: EventFunc | null;
+    isInHome: boolean;
+    japaneseName: string;
+    leftHomeFunc: EventFunc | null;
+    name: string;
+    constructor(name: string, japaneseName: string, isInHome: boolean, arrivedHomeFunc: EventFunc | null, leftHomeFunc: EventFunc | null) {
         this.name = name;
         this.japaneseName = japaneseName;
         this.isInHome = isInHome;
@@ -71,9 +78,13 @@ function main() {
     try {
         const confObj = readJsonConfigFile(CONFIG_JSON_FILENAME);
         app.listen(confObj.src_server_info.req_port) //外部からのリクエストを受け付けるポート番号を指定
-        printLog(`AppVersion: ${APP_VERSION.major}.${APP_VERSION.minor}.${APP_VERSION.revision}`);
+        printLog(`AppVersion: ${packageInfo.version}`);
     } catch (error) {
-        printErrLog(error);
+        if (error instanceof Error) {
+            printErrLog(error.message);
+        } else {
+            printErrLog(String(error));
+        }
     }
 }
 
@@ -131,22 +142,22 @@ app.get("/leftHome/:name", function (req, res) {
 });
 
 // 現在の家の状況
-app.get("/homeStatus", function (req, res) {
+app.get("/homeStatus", function (_req, res) {
     printHomeStatus();
     res.send(homeMembers);
 });
 
 // Index
-app.get("/", function (req, res) {    
+app.get("/", function (_req, res) {    
     res.send({
         status: "success",
-        app: APP_NAME,
-        version: `${APP_VERSION.major}.${APP_VERSION.minor}.${APP_VERSION.revision}`
+        app: `${packageInfo.name}`,
+        version: `${packageInfo.version}`
     });
 });
 
 // 雲量
-app.get("/cloud", function (req, res) {
+app.get("/cloud", function (_req, res) {
     getCloudiness().then(cloudiness => {
         res.send("cloud:" + cloudiness);
     });
@@ -175,14 +186,14 @@ function printHomeStatus() {
 }
 
 // 前回の清掃開始時刻を記録する変数
-let lastCleaningTime = null;
+let lastCleaningTime: UnixTimestamp | null = null;
 /**
  * 清掃開始処理
  * 前回の清掃から規定時間が経過しているときのみ清掃開始。経過していなければ清掃開始はしない
  * @param なし
  * @return none
  */
-async function startCleaning(switchbotInfo) {
+async function startCleaning(switchbotInfo: SwitchBotInfo) {
     const now = Date.now();
     if (lastCleaningTime && now - lastCleaningTime < switchbotInfo.cleaningIntevalMs) {
         // 前回の清掃から規定時間が経過していない場合、清掃開始をスキップ
@@ -194,16 +205,16 @@ async function startCleaning(switchbotInfo) {
 
 /**
  * 例外発生時のメール送信処理
- * @param {error} error内容
+ * @param {string} error内容
  * @return none
  */
-function sendMailWhenErrorThrow(error) {
+function sendMailWhenErrorThrow(error: string) {
     const mail_info = readJsonConfigFile(CONFIG_JSON_FILENAME).mail_info;
-    const title = `<${APP_NAME}> 例外発生！！！`;
+    const title = `<${packageInfo.name}> 例外発生！！！`;
     const body =
         error + `\n` +
         `\n` +
-        `AppVersion: ${APP_VERSION.major}.${APP_VERSION.minor}.${APP_VERSION.revision} `;
+        `AppVersion: ${packageInfo.version} `;
 
     for (let dstAddr of mail_info.dstAddrs) {
         sendMail(dstAddr, title, body);
@@ -221,8 +232,13 @@ function leftHomeHaruki() {
         //executeSceneByName("はるき部屋シャットダウン", switchbotInfo);
         executeCommand(switchbotInfo, HARUKI_LIGHT_DEVICE_NAME, CMD_LIGHT_OFF);
     } catch (error) {
-        printErrLog(error);
-        sendMailWhenErrorThrow(error);
+        if (error instanceof Error) {
+            printErrLog(error.message);
+            sendMailWhenErrorThrow(error.message);
+        } else {
+            printErrLog(String(error));
+            sendMailWhenErrorThrow(String(error));
+        }
     }
 }
 
@@ -236,8 +252,13 @@ function leftHomeKako() {
         const switchbotInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).switchbot_info;
         executeCommand(switchbotInfo, KAKO_LIGHT_DEVICE_NAME, CMD_LIGHT_OFF);
     } catch (error) {
-        printErrLog(error);
-        sendMailWhenErrorThrow(error);
+        if (error instanceof Error) {
+            printErrLog(error.message);
+            sendMailWhenErrorThrow(error.message);
+        } else {
+            printErrLog(String(error));
+            sendMailWhenErrorThrow(String(error));
+        }
     }
 }
 
@@ -256,8 +277,13 @@ function allMembersLeftHome() {
         executeCommand(switchbotInfo, LIVING_AIR_CONDITIONER_DEVICE_NAME, CMD_LIGHT_OFF);
         startCleaning(switchbotInfo);
     } catch (error) {
-        printErrLog(error);
-        sendMailWhenErrorThrow(error);
+        if (error instanceof Error) {
+            printErrLog(error.message);
+            sendMailWhenErrorThrow(error.message);
+        } else {
+            printErrLog(String(error));
+            sendMailWhenErrorThrow(String(error));
+        }
     }
 }
 
@@ -294,7 +320,13 @@ async function checkDarkness() {
             return false;
         }
     } catch (error) {
-        printErrLog('天気APIの取得に失敗しました', error.message);
+        if (error instanceof Error) {
+            // ここでは error が Error 型として認識されるので .message が使える
+            printErrLog('天気APIの取得に失敗しました:' + error.message);
+        } else {
+            // Errorオブジェクト以外（文字列など）が投げられた場合の予備処理
+            printErrLog('天気APIの取得に失敗しました:' + String(error));
+        }
         return false;
     }
 }
@@ -318,7 +350,12 @@ async function oneMemberArrivedHome() {
         await sleep(10 * 1000);
     executeCommand(switchbotInfo, TV_DEVICE_NAME, CMD_TV_DTTV, undefined, CMD_TYPE_CUSTOMIZE);
     } catch (error) {
-        printErrLog(error);
-        sendMailWhenErrorThrow(error);
+        if (error instanceof Error) {
+            printErrLog(error.message);
+            sendMailWhenErrorThrow(error.message);
+        } else {
+            printErrLog(String(error));
+            sendMailWhenErrorThrow(String(error));
+        }
     }
 }
