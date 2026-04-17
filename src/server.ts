@@ -4,7 +4,7 @@ import axios from 'axios';
 const app = express();
 import packageInfo from '../package.json';
 import { printLog, printErrLog, readJsonConfigFile, sendMail, CONFIG_JSON_FILENAME, sleep, SwitchBotInfo } from './common';
-import { executeCommand, } from './switchbot';
+import { executeCommand, checkK10HasDone, } from './switchbot';
 
 // デバイス名
 const ROBOT_CLEANER_DEVICE_NAME = "ロボット掃除機K10+";
@@ -185,8 +185,8 @@ function printHomeStatus() {
     printLog(msg);
 }
 
-// 前回の清掃開始時刻を記録する変数
-let lastCleaningTime: UnixTimestamp | null = null;
+let lastCleaningTime: UnixTimestamp | null = null; // 前回の清掃開始時刻を記録する変数
+let hasPrevCleaningHasDone: boolean = false; // 前回の清掃が完了しているかどうかを記録する変数 (初期値はfalseとする。アプリ起動後最初の清掃開始時には前回の清掃は完了していないとみなす)
 /**
  * 清掃開始処理
  * 前回の清掃から規定時間が経過しているときのみ清掃開始。経過していなければ清掃開始はしない
@@ -195,12 +195,24 @@ let lastCleaningTime: UnixTimestamp | null = null;
  */
 async function startCleaning(switchbotInfo: SwitchBotInfo) {
     const now = Date.now();
-    if (lastCleaningTime && now - lastCleaningTime < switchbotInfo.cleaningIntevalMs) {
-        // 前回の清掃から規定時間が経過していない場合、清掃開始をスキップ
+    if ( (hasPrevCleaningHasDone === true) && 
+         (lastCleaningTime && now - lastCleaningTime < switchbotInfo.cleaningIntevalMs) ) {
+        // 前回の清掃が完了済み、かつ前回の清掃から規定時間が経過していない場合、清掃開始をスキップ
         return;
     }
     lastCleaningTime = now;
     executeCommand(switchbotInfo, ROBOT_CLEANER_DEVICE_NAME, CMD_ROBOT_CLEANER_START);
+}
+
+/**
+ * 清掃終了処理
+ * 清掃を終了する。このとき、もう清掃が終わっているのか、それとも途中で清掃が中断されたかを確認する
+ * @param なし
+ * @return none
+ */
+async function stopCleaning(switchbotInfo: SwitchBotInfo) {
+    hasPrevCleaningHasDone = await checkK10HasDone(switchbotInfo, ROBOT_CLEANER_DEVICE_NAME); // 今現在清掃が完了しているかを確認して記憶しておく
+    executeCommand(switchbotInfo, ROBOT_CLEANER_DEVICE_NAME, CMD_ROBOT_CLEANER_STOP);         // 清掃停止コマンドを送る
 }
 
 /**
@@ -340,7 +352,7 @@ async function oneMemberArrivedHome() {
     try {
         const switchbotInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).switchbot_info;
         // executeSceneByName("リビング家電アクティブ", switchbotInfo);
-        executeCommand(switchbotInfo, ROBOT_CLEANER_DEVICE_NAME, CMD_ROBOT_CLEANER_STOP);
+        stopCleaning(switchbotInfo);
         // executeCommand(switchbotInfo, LIVING_AIR_CONDITIONER_DEVICE_NAME, CMD_REMOTE_SETALL, "25,2,1,on");
         if( await checkDarkness() ) {
             // 暗いときだけ照明をつける

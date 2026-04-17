@@ -4,7 +4,7 @@
 import axios from 'axios';
 import crypto from 'crypto';
 import { printLog, printErrLog, SwitchBotInfo } from './common';
-import { SwitchBotScene, SwitchBotDevice, SwitchBotInfraredRemote } from './@types/switchbot';
+import { SwitchBotScene, SwitchBotDevice, SwitchBotInfraredRemote, SwitchBotK10 } from './@types/switchbot';
 
 // 定数定義
 const SWITCHBOT_API_BASE_URL = 'https://api.switch-bot.com/v1.1';
@@ -152,10 +152,35 @@ async function checkDeviceStatusIfOnlineById(deviceId: string, switchbotInfo: Sw
     }
 }
 
+// ロボット掃除機K10の掃除が終了しているかを確認する関数。終了しているときはtrue、そうでないときはfalseを返す
+export async function checkK10HasDone(switchbotInfo: SwitchBotInfo, deviceName: string ) : Promise<boolean> {
+    const deviceId = await getDeviceId(switchbotInfo, deviceName);
+    if( !deviceId ) {
+        printErrLog(`デバイス「${deviceName}」が見つからないため、ステータスを取得できません。`);
+        return false;
+    }
+    // デバイスステータスの取得
+    const deviceStatus = await getDeviceStatus(switchbotInfo, deviceId);
+    const successCodes = [100, 190]; // 正常、wrong deviceIdの両方をオンラインとみなす(ステータス取得に非対応のデバイスはそもそも判定しない)
+
+    // APIリクエスト自体が失敗している場合は即座に false
+    if (!deviceStatus || !successCodes.includes(deviceStatus.statusCode) || !deviceStatus.body) {
+        return false;
+    }
+
+    // K10+のステータス情報を取得して、workingStatusからみてまだ掃除未完了かを確認する
+    const k10Status = deviceStatus.body as SwitchBotK10;
+    const cleaningHasNotDoneStatus = ["Clearing", "Paused", "Dormant", "InTrouble"]; // 掃除が完了していない状態
+    if (cleaningHasNotDoneStatus.includes(k10Status.workingStatus)) {
+        return false; // 掃除がまだ完了していない状態
+    } else {
+        return true; // 掃除が完了している状態
+    }
+}
+
 // デバイス名を使用してコマンドを実行する関数
 export async function executeCommand(switchbotInfo: SwitchBotInfo, deviceName: string, command: string, parameter: string = 'default', commandType: string = 'command') {
     try {
-        // 設定ファイル(json)からトークン、シークレットキーを取得
         const deviceId = await getDeviceId(switchbotInfo, deviceName);
         if( !deviceId ) {
             printErrLog(`デバイス「${deviceName}」が見つからないため、コマンドを実行できません。`);

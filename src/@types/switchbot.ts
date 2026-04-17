@@ -19,3 +19,14 @@ export interface SwitchBotInfraredRemote {
     remoteType: string;
     hubDeviceId: string;
 }
+
+// K10+のインターフェース定義
+export interface SwitchBotK10 {
+    deviceId: string;
+    deviceName: string;
+    deviceType: string;
+    hubDeviceId: string;
+    workingStatus: string;
+    onlineStatus: string;
+    battery: number;
+}
