@@ -80,7 +80,7 @@ async function getDevices(switchbotInfo: SwitchBotInfo): Promise<{ body: { devic
     try {
         const headers = generateHeaders(switchbotInfo);
         const response = await axios.get(`${SWITCHBOT_API_BASE_URL}/devices`, { headers });
-        if( !response || response.status !== 100) {
+        if( !response || response.statusText !== "OK") {
             throw new Error(`デバイス一覧の取得に失敗しました。レスポンス: ${JSON.stringify(response.data)}`);
         }
         return response.data;

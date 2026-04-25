@@ -300,7 +300,7 @@ function allMembersLeftHome() {
 }
 
 /**
- * 暗いかどうかを判定する (日没 or 雲量)
+ * 暗いかどうかを判定する (日没)
  */
 async function checkDarkness() {
     try {
@@ -308,24 +308,17 @@ async function checkDarkness() {
         const url = `https://api.openweathermap.org/data/2.5/weather?lat=${weatherInfo.latitude}&lon=${weatherInfo.longitude}&appid=${weatherInfo.openweather_api_key}&units=metric`;
         const res = await axios.get(url);
         
-        const { sys, clouds, dt } = res.data;
+        const { sys, dt } = res.data;
         const sunset = sys.sunset;   // 日没時刻 (UNIXタイム)
         const sunrise = sys.sunrise; // 日の出時刻 (UNIXタイム)
-        const cloudiness = clouds.all; // 雲の量 (0-100%)
         const currentTime = dt;      // 現在時刻 (UNIXタイム)
         const OFFSET_SEC = 30 * 60; // 30分の余裕を持たせる
 
-        printLog(`現在の雲量: ${cloudiness}%`);
-
         // 条件設定
         const isEvening  = (currentTime > (sunset - OFFSET_SEC) || currentTime < (sunrise + OFFSET_SEC)); // 日没30分前から日の出30分後までは夜とみなす
-        const isVeryCloudy = (cloudiness >= weatherInfo.cloudLevelThreshold); // 雲量が指定された閾値以上なら「暗い」とみなす
 
         if (isEvening) {
             printLog('判定結果: 暗い (時間帯による判定)');
-            return true;
-        } else if (isVeryCloudy) {
-            printLog('判定結果: 暗い (雲量による判定)');
             return true;
         } else {
             printLog('判定結果: 明るい');
