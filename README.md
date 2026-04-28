@@ -35,6 +35,7 @@ cd ~
 git clone https://github.com/Pulsar1722/homeIoTServer
 cd homeIoTServer
 npm install
+npm run build
 ```
 3. 設定ファイルの作成 (手動)
 
