@@ -5,12 +5,13 @@
 import fs from 'fs';
 import nodemailer from 'nodemailer';
 import { z } from 'zod';
+import yaml from 'js-yaml';
 import packageInfo from '../package.json';
 
-export const CONFIG_JSON_FILENAME = "./config.json"; //設定ファイルの相対パス
+// 設定ファイルの相対パス（YAML形式に対応）
+export const CONFIG_YAML_FILENAME = "./config.yaml"; 
 
-// JSONファイルの設定項目
-// アプリのJSONファイル設定項目をスキーマ（ルール）で定義する
+// 設定ファイル全体をスキーマ（ルール）で定義する
 const AppConfigSchema = z.object({
     src_server_info: z.object({
         req_port: z.number(),
@@ -18,7 +19,9 @@ const AppConfigSchema = z.object({
     switchbot_info: z.object({
         token: z.string(),
         secret: z.string(),
-        cleaningIntevalMs: z.number(),
+        cleaningIntevalSec: z.number(),
+        lightOnBeforeSunsetSec: z.number(),
+        lightOnAfterSunriseSec: z.number(),
     }),
     mail_info: z.object({
         dstAddrs: z.array(z.string()),
@@ -56,27 +59,30 @@ export function printErrLog(logstr: string) {
 }
 
 /**
- * 設定ファイル(JSON形式)を読み出し、各種設定値を取得する。設定値の妥当性確認も行う
- * @param {string} jsonFilename -JSON形式の設定ファイルパス
- * @return 正常に設定ファイルを読み出せた場合はJSONオブジェクト。そうでない場合はnull
+ * 設定ファイル（YAML形式）を読み出し、各種設定値を取得する。
+ * 設定値の妥当性確認も行う。
+ * @param {string} yamlFilePath -設定ファイルパス
+ * @return 正常に設定ファイルを読み出せた場合は設定オブジェクト。そうでない場合はnull
  */
-export function readJsonConfigFile(jsonFilePath: string): AppConfig {
-    if (!fs.existsSync(jsonFilePath)) {
-        throw new Error(`設定ファイルが見つかりません: ${jsonFilePath}`);
+export function readYamlConfigFile(yamlFilePath: string): AppConfig {
+    if (!fs.existsSync(yamlFilePath)) {
+        throw new Error(`設定ファイルが見つかりません: ${yamlFilePath}`);
     }
 
-    const configData = fs.readFileSync(jsonFilePath, 'utf-8');
-    const rawConfig = JSON.parse(configData);
+    // YAMLファイルをテキストとして読み込み
+    const configData = fs.readFileSync(yamlFilePath, 'utf-8');
+    
+    // YAMLをパース
+    const rawConfig = yaml.load(configData);
 
-    // 解析とバリデーションを一気に行う
+    // Zodによるバリデーション
     const result = AppConfigSchema.safeParse(rawConfig);
     if (!result.success) {
-        // エラー内容が自動で詳細に生成される
         const errorMessages = result.error.issues.map(e => `${e.path.join('.')}: ${e.message}`);
-        throw new Error(`設定ファイルのエラー:\n${errorMessages.join('\n')}`);
+        throw new Error(`設定ファイル(${yamlFilePath})のエラー:\n${errorMessages.join('\n')}`);
     }
 
-    return result.data; // ここでは既に AppConfig 型になっている
+    return result.data;
 }
 
 /**
@@ -87,7 +93,9 @@ export function readJsonConfigFile(jsonFilePath: string): AppConfig {
  * @return {boolean} 送信成功ならtrue、送信失敗ならfalse
  */
 export async function sendMail(destAddr: string, title: string, body: string) {
-    const mail_info = readJsonConfigFile(CONFIG_JSON_FILENAME).mail_info;
+    // 設定ファイル読み込み関数を汎用的に変更したので、
+    // CONFIG_YAML_FILENAME を渡すように変更
+    const mail_info = readYamlConfigFile(CONFIG_YAML_FILENAME).mail_info; 
     
     // 1. 送信機（Transporter）の作成
     const transporter = nodemailer.createTransport({

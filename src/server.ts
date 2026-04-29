@@ -3,7 +3,7 @@ import express from "express";
 import axios from 'axios';
 const app = express();
 import packageInfo from '../package.json';
-import { printLog, printErrLog, readJsonConfigFile, sendMail, CONFIG_JSON_FILENAME, sleep, SwitchBotInfo } from './common';
+import { printLog, printErrLog, readYamlConfigFile, sendMail, CONFIG_YAML_FILENAME, sleep, SwitchBotInfo } from './common';
 import { executeCommand, checkK10HasDone, } from './switchbot';
 
 // デバイス名
@@ -76,7 +76,7 @@ if (require.main === module) {
  */
 function main() {
     try {
-        const confObj = readJsonConfigFile(CONFIG_JSON_FILENAME);
+        const confObj = readYamlConfigFile(CONFIG_YAML_FILENAME);
         app.listen(confObj.src_server_info.req_port) //外部からのリクエストを受け付けるポート番号を指定
         printLog(`AppVersion: ${packageInfo.version}`);
     } catch (error) {
@@ -164,7 +164,7 @@ app.get("/cloud", function (_req, res) {
 });
 
 async function getCloudiness() {
-    const weatherInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).weather_info;
+    const weatherInfo = readYamlConfigFile(CONFIG_YAML_FILENAME).weather_info;
     const url = `https://api.openweathermap.org/data/2.5/weather?lat=${weatherInfo.latitude}&lon=${weatherInfo.longitude}&appid=${weatherInfo.openweather_api_key}&units=metric`;
     const weatherRes = await axios.get(url);
     return weatherRes.data.clouds.all;
@@ -196,7 +196,7 @@ let hasPrevCleaningHasDone: boolean = false; // 前回の清掃が完了して�
 async function startCleaning(switchbotInfo: SwitchBotInfo) {
     const now = Date.now();
     if ( (hasPrevCleaningHasDone === true) && 
-         (lastCleaningTime && now - lastCleaningTime < switchbotInfo.cleaningIntevalMs) ) {
+         (lastCleaningTime && now - lastCleaningTime < (switchbotInfo.cleaningIntevalSec * 1000) ) ) { // "cleaningIntevalSec"については、計算のためにsec -> msに直す
         // 前回の清掃が完了済み、かつ前回の清掃から規定時間が経過していない場合、清掃開始をスキップ
         return;
     }
@@ -221,7 +221,7 @@ async function stopCleaning(switchbotInfo: SwitchBotInfo) {
  * @return none
  */
 function sendMailWhenErrorThrow(error: string) {
-    const mail_info = readJsonConfigFile(CONFIG_JSON_FILENAME).mail_info;
+    const mail_info = readYamlConfigFile(CONFIG_YAML_FILENAME).mail_info;
     const title = `<${packageInfo.name}> 例外発生！！！`;
     const body =
         error + `\n` +
@@ -240,7 +240,7 @@ function sendMailWhenErrorThrow(error: string) {
  */
 function leftHomeHaruki() {
     try {
-        const switchbotInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).switchbot_info;
+        const switchbotInfo = readYamlConfigFile(CONFIG_YAML_FILENAME).switchbot_info;
         //executeSceneByName("はるき部屋シャットダウン", switchbotInfo);
         executeCommand(switchbotInfo, HARUKI_LIGHT_DEVICE_NAME, CMD_LIGHT_OFF);
     } catch (error) {
@@ -261,7 +261,7 @@ function leftHomeHaruki() {
  */
 function leftHomeKako() {
     try {
-        const switchbotInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).switchbot_info;
+        const switchbotInfo = readYamlConfigFile(CONFIG_YAML_FILENAME).switchbot_info;
         executeCommand(switchbotInfo, KAKO_LIGHT_DEVICE_NAME, CMD_LIGHT_OFF);
     } catch (error) {
         if (error instanceof Error) {
@@ -281,7 +281,7 @@ function leftHomeKako() {
  */
 function allMembersLeftHome() {
     try {
-        const switchbotInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).switchbot_info;
+        const switchbotInfo = readYamlConfigFile(CONFIG_YAML_FILENAME).switchbot_info;
         // executeSceneByName("家電シャットダウン", switchbotInfo);
         executeCommand(switchbotInfo, LIVING_LIGHT_DEVICE_NAME, CMD_LIGHT_OFF);
         executeCommand(switchbotInfo, KAKO_LIGHT_DEVICE_NAME, CMD_LIGHT_OFF);
@@ -304,7 +304,8 @@ function allMembersLeftHome() {
  */
 async function checkDarkness() {
     try {
-        const weatherInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).weather_info;
+        const switchbotInfo = readYamlConfigFile(CONFIG_YAML_FILENAME).switchbot_info;
+        const weatherInfo = readYamlConfigFile(CONFIG_YAML_FILENAME).weather_info;
         const url = `https://api.openweathermap.org/data/2.5/weather?lat=${weatherInfo.latitude}&lon=${weatherInfo.longitude}&appid=${weatherInfo.openweather_api_key}&units=metric`;
         const res = await axios.get(url);
         
@@ -312,10 +313,9 @@ async function checkDarkness() {
         const sunset = sys.sunset;   // 日没時刻 (UNIXタイム)
         const sunrise = sys.sunrise; // 日の出時刻 (UNIXタイム)
         const currentTime = dt;      // 現在時刻 (UNIXタイム)
-        const OFFSET_SEC = 30 * 60; // 30分の余裕を持たせる
 
         // 条件設定
-        const isEvening  = (currentTime > (sunset - OFFSET_SEC) || currentTime < (sunrise + OFFSET_SEC)); // 日没30分前から日の出30分後までは夜とみなす
+        const isEvening  = ( (currentTime > (sunset - (switchbotInfo.lightOnBeforeSunsetSec * 60))) || (currentTime < (sunrise + (switchbotInfo.lightOnAfterSunriseSec * 60))) ); // この範囲の時間は部屋が暗いものとみなす
 
         if (isEvening) {
             printLog('判定結果: 暗い (時間帯による判定)');
@@ -343,7 +343,7 @@ async function checkDarkness() {
  */
 async function oneMemberArrivedHome() {
     try {
-        const switchbotInfo = readJsonConfigFile(CONFIG_JSON_FILENAME).switchbot_info;
+        const switchbotInfo = readYamlConfigFile(CONFIG_YAML_FILENAME).switchbot_info;
         // executeSceneByName("リビング家電アクティブ", switchbotInfo);
         stopCleaning(switchbotInfo);
         // executeCommand(switchbotInfo, LIVING_AIR_CONDITIONER_DEVICE_NAME, CMD_REMOTE_SETALL, "25,2,1,on");

@@ -1,0 +1,25 @@
+# サーバ全般に関する情報
+src_server_info:
+  req_port: 12345 # エンドポイントへのアクセスを受け付けるポート番号(通常のhttps接続にしたい場合は443などをここで指定)
+
+# SwitchbotAPI制御関連
+switchbot_info:
+  token: "hoge_token" # switchbotAPIのトークン
+  secret: "fuga_secret" # switchbotAPIのシークレット
+  cleaningIntevalSec: 86400 # ロボット掃除機の動作条件として、前回の清掃完了から何秒経過したら再度清掃開始可能とするか(単位:秒)
+  lightOnBeforeSunsetSec: 9000 # 日の入り何分前から明かりの点灯許可するか (正の値で日の入りより前の時刻、負の値で日の入りより後の時刻)(単位:秒)
+  lightOnAfterSunriseSec: 7200 # 日の出何分後まで点灯許可するか (正の値で日の出より後の時刻、負の値で日の出より前の時刻)(単位:秒)
+
+# メール配信関連
+mail_info:
+  dstAddrs: # エラー発生時の配信先メールアドレス(複数指定可能)
+    - "hoge.dst@mail.com"
+  srcAddr: "hoge.src@gmail.com" # エラー発生時の送信元メールアドレス
+  srcPass: "hogePassword" # エラー発生時の送信元メールアドレスのアプリパスワード
+
+# 天気情報関連(日の出、日の入り時刻情報などを取得)
+weather_info:
+  latitude: 12.3456 # 天気情報を取得したい地点の緯度
+  longitude: 78.9012 # 天気情報を取得したい地点の経度
+  openweather_api_key: "apikey1234567890" # openweatherのAPIキー
+  cloudLevelThreshold: 90 # 雲量のしきい値
