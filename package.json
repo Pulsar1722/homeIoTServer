@@ -2,7 +2,7 @@
   "name": "homeIotServer",
   "version": "1.0.0",
   "description": "Home IoT Server",
-  "main": "common.js",
+  "main": "src/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "debug": "tsx watch src/server.ts",
