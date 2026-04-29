@@ -14,7 +14,7 @@ SwitchBot API v1.1 を使用して、在宅状況に基づいた家電（ロボ�
 2. `npm install` を実行
 3. `config.json` を作成（後述の「設定」を参照）
 4. `npm run build` でビルド
-5. `npm start` でアプリ実行
+5. `npm start` でアプリ実行 or `npm run debug`でtypescriptを直接デバッグ実行
 
 ---
 
