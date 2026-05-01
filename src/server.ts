@@ -315,7 +315,7 @@ async function checkDarkness() {
         const currentTime = dt;      // 現在時刻 (UNIXタイム)
 
         // 条件設定
-        const isEvening  = ( (currentTime > (sunset - (switchbotInfo.lightOnBeforeSunsetSec * 60))) || (currentTime < (sunrise + (switchbotInfo.lightOnAfterSunriseSec * 60))) ); // この範囲の時間は部屋が暗いものとみなす
+        const isEvening  = ( (currentTime > (sunset - switchbotInfo.lightOnBeforeSunsetSec)) || (currentTime < (sunrise + switchbotInfo.lightOnAfterSunriseSec)) ); // この範囲の時間は部屋が暗いものとみなす
 
         if (isEvening) {
             printLog('判定結果: 暗い (時間帯による判定)');
