@@ -198,6 +198,7 @@ async function startCleaning(switchbotInfo: SwitchBotInfo) {
     if ( (hasPrevCleaningHasDone === true) && 
          (lastCleaningTime && now - lastCleaningTime < (switchbotInfo.cleaningIntevalSec * 1000) ) ) { // "cleaningIntevalSec"については、計算のためにsec -> msに直す
         // 前回の清掃が完了済み、かつ前回の清掃から規定時間が経過していない場合、清掃開始をスキップ
+        printErrLog(`前回の清掃から規定時間が経過していないため、清掃開始をスキップします。 (前回の清掃開始時刻: ${new Date(lastCleaningTime).toLocaleString()} )`);
         return;
     }
     lastCleaningTime = now;
