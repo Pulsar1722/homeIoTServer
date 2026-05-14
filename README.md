@@ -88,5 +88,5 @@ pm2 logs
 
 更新後の反映
 ```Bash
-pm2 restart 
+pm2 restart homeIotServer
 ```
