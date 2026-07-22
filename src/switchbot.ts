@@ -50,6 +50,7 @@ async function executeScene(switchbotInfo: SwitchBotInfo, sceneId: string) {
         const url = `${SWITCHBOT_API_BASE_URL}/scenes/${sceneId}/execute`;
         const response = await axios.post(url, null, { headers });
         printLog(`シーンID「${sceneId}」の実行結果:` + JSON.stringify(response.data));
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1秒待機してから次の処理に進む
     } catch (error) {
         printErrLog('シーン実行に失敗しました');
         throw error;
@@ -200,6 +201,7 @@ export async function executeCommand(switchbotInfo: SwitchBotInfo, deviceName: s
         const url = `${SWITCHBOT_API_BASE_URL}/devices/${deviceId}/commands`;
         const response = await axios.post(url, commandBody, { headers });
         printLog(`デバイスID「${deviceId}」の実行結果:` + JSON.stringify(response.data));
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1秒待機してから次の処理に進む
     } catch (error) {
         printErrLog('デバイスコマンド実行に失敗しました');
         throw error;
