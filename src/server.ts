@@ -4,7 +4,11 @@ import axios from 'axios';
 const app = express();
 import packageInfo from '../package.json';
 import { printLog, printErrLog, readYamlConfigFile, sendMail, CONFIG_YAML_FILENAME, sleep, SwitchBotInfo } from './common';
-import { executeCommand, checkK10HasDone, } from './switchbot';
+import { executeCommand, checkK10HasDone, getAvailableDeviceNames } from './switchbot';
+import { ArrivalAction, loadAutomations, saveAutomations } from './automations';
+
+app.use(express.json({ limit: '100kb' }));
+app.use(express.static('public'));
 
 // デバイス名
 const ROBOT_CLEANER_DEVICE_NAME = "ロボット掃除機K10+";
@@ -12,21 +16,15 @@ const HARUKI_LIGHT_DEVICE_NAME = "シーリングライト_はるき";
 const KAKO_LIGHT_DEVICE_NAME = "シーリングライト_かこ";
 const LIVING_LIGHT_DEVICE_NAME = "シーリングライトプロ_リビング";
 const LIVING_AIR_CONDITIONER_DEVICE_NAME = "エアコン";
-const TV_DEVICE_NAME = "テレビ";
 
 // コマンド
 const CMD_ROBOT_CLEANER_START = "start";
 const CMD_ROBOT_CLEANER_STOP = "dock";
 
-const CMD_LIGHT_ON = "turnOn";
 const CMD_LIGHT_OFF= "turnOff";
 
 // const CMD_REMOTE_SETALL= "setAll";
 
-const CMD_TV_DTTV= "地上D_API用";
-
-// コマンドタイプ
-const CMD_TYPE_CUSTOMIZE = "customize";
 
 // 型名
 type EventFunc = ( ) => void;
@@ -145,6 +143,38 @@ app.get("/leftHome/:name", function (req, res) {
 app.get("/homeStatus", function (_req, res) {
     printHomeStatus();
     res.send(homeMembers);
+});
+
+// 公開サーバーで利用する場合は、リバースプロキシ等でこの設定画面とAPIに認証を掛けること。
+app.get('/api/automations', function (_req, res) {
+    try {
+        res.json(loadAutomations());
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        printErrLog(`Automation settings read failed: ${message}`);
+        res.status(500).json({ error: '設定を読み込めませんでした。' });
+    }
+});
+
+app.put('/api/automations', function (req, res) {
+    try {
+        res.json(saveAutomations(req.body));
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        printErrLog(`Automation settings save failed: ${message}`);
+        res.status(400).json({ error: '設定値が正しくありません。', detail: message });
+    }
+});
+
+app.get('/api/switchbot/devices', async function (_req, res) {
+    try {
+        const switchbotInfo = readYamlConfigFile(CONFIG_YAML_FILENAME).switchbot_info;
+        res.json({ devices: await getAvailableDeviceNames(switchbotInfo) });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        printErrLog(`SwitchBot device list failed: ${message}`);
+        res.status(502).json({ error: 'SwitchBot機器一覧を取得できませんでした。' });
+    }
 });
 
 // Index
@@ -347,14 +377,15 @@ async function oneMemberArrivedHome() {
         const switchbotInfo = readYamlConfigFile(CONFIG_YAML_FILENAME).switchbot_info;
         // executeSceneByName("リビング家電アクティブ", switchbotInfo);
         stopCleaning(switchbotInfo);
-        // executeCommand(switchbotInfo, LIVING_AIR_CONDITIONER_DEVICE_NAME, CMD_REMOTE_SETALL, "25,2,1,on");
-        if( await checkDarkness() ) {
-            // 暗いときだけ照明をつける
-            executeCommand(switchbotInfo, LIVING_LIGHT_DEVICE_NAME, CMD_LIGHT_ON);
+        const actions = loadAutomations().oneMemberArrivedHome;
+        let isDark: boolean | undefined;
+
+        for (const action of actions) {
+            await executeArrivalAction(action, switchbotInfo, async () => {
+                if (isDark === undefined) isDark = await checkDarkness();
+                return isDark;
+            });
         }
-        executeCommand(switchbotInfo, TV_DEVICE_NAME, CMD_LIGHT_ON);
-        await sleep(10 * 1000);
-    executeCommand(switchbotInfo, TV_DEVICE_NAME, CMD_TV_DTTV, undefined, CMD_TYPE_CUSTOMIZE);
     } catch (error) {
         if (error instanceof Error) {
             printErrLog(error.message);
@@ -365,3 +396,21 @@ async function oneMemberArrivedHome() {
         }
     }
 }
+
+async function executeArrivalAction(action: ArrivalAction, switchbotInfo: SwitchBotInfo, getIsDark: () => Promise<boolean>) {
+    if (!action.enabled) return;
+
+    if (action.type === 'wait') {
+        await sleep(action.durationMs);
+        return;
+    }
+
+    if (action.when === 'dark' && !await getIsDark()) return;
+    await executeCommand(switchbotInfo, action.deviceName, action.command, action.parameter, action.commandType);
+}
+
+// 現在の家の状況
+app.get("/test", function (_req, res) {
+    oneMemberArrivedHome();
+    res.send(loadAutomations().oneMemberArrivedHome);
+});

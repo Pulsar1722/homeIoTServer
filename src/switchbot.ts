@@ -91,6 +91,14 @@ async function getDevices(switchbotInfo: SwitchBotInfo): Promise<{ body: { devic
     }
 }
 
+/** 設定画面に表示する登録済みの機器・赤外線リモコンの名前 */
+export async function getAvailableDeviceNames(switchbotInfo: SwitchBotInfo): Promise<string[]> {
+    const devices = await getDevices(switchbotInfo);
+    return [...devices.body.deviceList, ...devices.body.infraredRemoteList]
+        .map(device => device.deviceName)
+        .sort((a, b) => a.localeCompare(b, 'ja'));
+}
+
 // SwitchBot APIからシーン一覧を取得する関数
 async function getDeviceId(switchbotInfo: SwitchBotInfo, deviceName: string) {
     try {

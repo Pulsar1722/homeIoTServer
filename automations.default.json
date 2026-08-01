@@ -1,0 +1,41 @@
+{
+  "oneMemberArrivedHome": [
+    {
+      "type": "command",
+      "deviceName": "シーリングライト_リビング",
+      "command": "turnOn",
+      "parameter": "default",
+      "commandType": "command",
+      "when": "dark",
+      "enabled": true
+    },
+    {
+      "type": "command",
+      "deviceName": "エアコン",
+      "command": "setAll",
+      "parameter": "25,2,1,on",
+      "commandType": "command",
+      "when": "always",
+      "enabled": true
+    },
+    {
+      "type": "command",
+      "deviceName": "テレビ",
+      "command": "turnOn",
+      "parameter": "default",
+      "commandType": "command",
+      "when": "always",
+      "enabled": true
+    },
+    { "type": "wait", "durationMs": 10000, "enabled": true },
+    {
+      "type": "command",
+      "deviceName": "テレビ",
+      "command": "地上D_API用",
+      "parameter": "default",
+      "commandType": "customize",
+      "when": "always",
+      "enabled": true
+    }
+  ]
+}
