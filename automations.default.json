@@ -2,7 +2,7 @@
   "oneMemberArrivedHome": [
     {
       "type": "command",
-      "deviceName": "シーリングライト_リビング",
+      "deviceName": "シーリングライトプロ_リビング",
       "command": "turnOn",
       "parameter": "default",
       "commandType": "command",
